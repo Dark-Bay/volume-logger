@@ -1,3 +1,4 @@
+#!/usr/local/bin/python
 """ LED Processor Logger
 
 Loads JSON data from Megapixel Helios or Brompton Tessera 3.1+ processors and
