@@ -8,6 +8,7 @@ j.kretschmer@dark-bay.com
 """
 import argparse
 import logging
+import logging.handlers
 import re
 import sys
 import time
@@ -15,18 +16,20 @@ import time
 import requests
 import requests.exceptions
 
+LOG_FILE = "/var/log/led-volume.log"
+DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 DEFAULT_INTERVAL = 30
 BROMPTON_URL = 'http://%s/api/'
 MEGAPIXEL_URL = 'http://%s/api/v1/data'
+LOG_BACKUP_COUNT = 99
+LOG_MAX_BYTES = 10*2**10
 
 LOG = logging.getLogger('darkbay')
 LOG.addHandler(logging.StreamHandler())
-LOG.handlers[-1].setFormatter(logging.Formatter('%(levelname)s: %(message)s'))
+LOG.handlers[-1].setFormatter(logging.Formatter('%(asctime)s %(levelname)s: %(message)s', datefmt=DATE_FORMAT))
 
 OUTPUT = logging.getLogger('darkbay.changes')
 OUTPUT.propagate = False
-OUTPUT.addHandler(logging.StreamHandler(sys.stdout))
-OUTPUT.handlers[-1].setFormatter(logging.Formatter('%(message)s'))
 OUTPUT.setLevel(logging.INFO)
 
 VETO = [re.compile(_) for _ in [
@@ -120,11 +123,10 @@ def dict_compare(a, b, path=None):
     for k, v in a.items():
         working_path = path + [k]
         path_str = '.'.join(working_path)
-        if isinstance(v, dict):
-            if k not in b:
-                result.append(path_str)
-            else:
-                result.extend(dict_compare(v, b[k], path=working_path))
+        if k not in b:
+            result.append(path_str)
+        elif isinstance(v, dict):
+            result.extend(dict_compare(v, b[k], path=working_path))
         elif any([_.match(path_str) for _ in VETO]):
             continue
         elif isinstance(v, list):
@@ -136,8 +138,8 @@ def dict_compare(a, b, path=None):
     for k in (set(b.keys()) - set(a.keys())):
         working_path = path + [k]
         result.append('.'.join(working_path))
-
     return result
+
 
 def parse_args():
     args = argparse.ArgumentParser()
@@ -145,6 +147,9 @@ def parse_args():
     args.add_argument('-v', '--verbose', action='store_true', help="Verbose output")
     args.add_argument('-q', '--quiet', action='store_true', help="Ignore warnings")
     args.add_argument('-d', '--debug', action='store_true', help="Show debug messages")
+    args.add_argument(
+        '-l', '--logfile', default=LOG_FILE,
+        help="Writeable filepath for log data (default:%s)" % LOG_FILE)
     args.add_argument(
         '-i', '--interval', type=float, default=DEFAULT_INTERVAL,
         help="Check interval in seconds (default: %s)" % DEFAULT_INTERVAL)
@@ -164,6 +169,11 @@ def main():
         level = logging.DEBUG
     LOG.setLevel(level)
 
+    log_handler = logging.handlers.RotatingFileHandler(
+        args.logfile, maxBytes=LOG_MAX_BYTES, backupCount=LOG_BACKUP_COUNT)
+    OUTPUT.addHandler(log_handler)
+    OUTPUT.handlers[-1].setFormatter(logging.Formatter('%(asctime)s %(message)s', datefmt=DATE_FORMAT))
+
     processors = []
     LOG.debug("Initializing processor objects")
     for host in args.hosts:
@@ -175,10 +185,15 @@ def main():
     if len(args.hosts) != len(processors):
         LOG.error("%d host(s) will be ignored for this session.", len(args.hosts) - len(processors))
 
+    OUTPUT.info("(Process started)")
     while True:
-        for proc in processors:
-            proc.sample()
-            proc.compare()
+        try:
+            for proc in processors:
+                proc.sample()
+                proc.compare()
+        except (KeyboardInterrupt, SystemExit) as error:
+            OUTPUT.info("(Process exiting)")
+            sys.exit(0)
         LOG.debug("Sleeping %s %0.1f", args.interval)
         time.sleep(args.interval)
 
