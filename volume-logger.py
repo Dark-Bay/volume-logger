@@ -22,7 +22,7 @@ DEFAULT_INTERVAL = 30
 BROMPTON_URL = 'http://%s/api/'
 MEGAPIXEL_URL = 'http://%s/api/v1/data'
 LOG_BACKUP_COUNT = 99
-LOG_MAX_BYTES = 10*2**10
+LOG_MAX_BYTES = 100*2**20
 
 LOG = logging.getLogger('darkbay')
 LOG.addHandler(logging.StreamHandler())
@@ -172,7 +172,13 @@ def main():
     log_handler = logging.handlers.RotatingFileHandler(
         args.logfile, maxBytes=LOG_MAX_BYTES, backupCount=LOG_BACKUP_COUNT)
     OUTPUT.addHandler(log_handler)
-    OUTPUT.handlers[-1].setFormatter(logging.Formatter('%(asctime)s %(message)s', datefmt=DATE_FORMAT))
+    log_handler.setFormatter(logging.Formatter('%(asctime)s %(message)s', datefmt=DATE_FORMAT))
+
+    prefix, ext = os.path.splitext(args.logfile)
+    error_log_handler = logging.handlers.RotatingFileHanlder(
+        prefix + '-error' + ext, maxBytes=LOG_MAX_BYTES, backupCount=LOG_BACKUP_COUNT)
+    error_log_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s: %(message)s', datefmt=DATE_FORMAT)
+    LOG.addHandler(error_log_handler)
 
     processors = []
     LOG.debug("Initializing processor objects")
