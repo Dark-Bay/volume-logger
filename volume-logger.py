@@ -9,6 +9,7 @@ j.kretschmer@dark-bay.com
 import argparse
 import logging
 import logging.handlers
+import os
 import re
 import sys
 import time
@@ -175,9 +176,9 @@ def main():
     log_handler.setFormatter(logging.Formatter('%(asctime)s %(message)s', datefmt=DATE_FORMAT))
 
     prefix, ext = os.path.splitext(args.logfile)
-    error_log_handler = logging.handlers.RotatingFileHanlder(
+    error_log_handler = logging.handlers.RotatingFileHandler(
         prefix + '-error' + ext, maxBytes=LOG_MAX_BYTES, backupCount=LOG_BACKUP_COUNT)
-    error_log_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s: %(message)s', datefmt=DATE_FORMAT)
+    error_log_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s: %(message)s', datefmt=DATE_FORMAT))
     LOG.addHandler(error_log_handler)
 
     processors = []
