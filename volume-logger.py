@@ -26,7 +26,7 @@ LOG_MAX_BYTES = 100*2**20
 
 LOG = logging.getLogger('darkbay')
 LOG.addHandler(logging.StreamHandler())
-LOG.handlers[-1].setFormatter(logging.Formatter('%(asctime)s %(levelname)s: %(message)s', datefmt=DATE_FORMAT))
+LOG.handlers[-1].setFormatter(logging.Formatter('%(levelname)s: %(message)s'))
 
 OUTPUT = logging.getLogger('darkbay.changes')
 OUTPUT.propagate = False
