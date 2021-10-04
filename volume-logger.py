@@ -30,7 +30,6 @@ LOG.addHandler(logging.StreamHandler())
 LOG.handlers[-1].setFormatter(logging.Formatter('%(levelname)s: %(message)s'))
 
 OUTPUT = logging.getLogger('darkbay.changes')
-OUTPUT.propagate = False
 OUTPUT.setLevel(logging.INFO)
 
 VETO = [re.compile(_) for _ in [
@@ -145,7 +144,6 @@ def dict_compare(a, b, path=None):
 def parse_args():
     args = argparse.ArgumentParser()
     args.add_argument('hosts', metavar='HOST', nargs='+', help="Host address of processor")
-    args.add_argument('-v', '--verbose', action='store_true', help="Verbose output")
     args.add_argument('-q', '--quiet', action='store_true', help="Ignore warnings")
     args.add_argument('-d', '--debug', action='store_true', help="Show debug messages")
     args.add_argument(
@@ -161,11 +159,9 @@ def main():
     """ Loop forever logging any changes
     """
     args = parse_args()
-    level = logging.WARNING
+    level = logging.INFO
     if args.quiet:
         level = logging.ERROR
-    if args.verbose:
-        level = logging.INFO
     if args.debug:
         level = logging.DEBUG
     LOG.setLevel(level)
@@ -179,6 +175,7 @@ def main():
     error_log_handler = logging.handlers.RotatingFileHandler(
         prefix + '-error' + ext, maxBytes=LOG_MAX_BYTES, backupCount=LOG_BACKUP_COUNT)
     error_log_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s: %(message)s', datefmt=DATE_FORMAT))
+    error_log_handler.setLevel(logging.WARNING)
     LOG.addHandler(error_log_handler)
 
     processors = []
